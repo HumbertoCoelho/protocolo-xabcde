@@ -1,0 +1,9 @@
+{
+  "appId": "com.protocoloxabcde.app",
+  "appName": "Protocolo XABCDE",
+  "webDir": "templates",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}

@@ -1,0 +1,2639 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Protocolo XABCDE</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Protocolo de Avaliação Primária em Emergências">
+    <meta name="theme-color" content="#2c3e50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="XABCDE">
+    
+    <!-- PWA Links -->
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icons/icon-152x152.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./icons/icon-16x16.png">
+    
+    <!-- PWA Splash Screens -->
+    <link rel="apple-touch-startup-image" href="./icons/splash-640x1136.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)">
+    <link rel="apple-touch-startup-image" href="./icons/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)">
+    <link rel="apple-touch-startup-image" href="./icons/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)">
+    <link rel="apple-touch-startup-image" href="./icons/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)">
+    
+    <!-- PWA Script -->
+    <script>
+        // Função para forçar atualização do PWA
+        async function forceUpdate() {
+            if ('serviceWorker' in navigator) {
+                try {
+                    // Desregistra o service worker atual
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for(let registration of registrations) {
+                        await registration.unregister();
+                    }
+                    
+                    // Limpa todos os caches
+                    const cacheNames = await caches.keys();
+                    await Promise.all(
+                        cacheNames.map(cacheName => caches.delete(cacheName))
+                    );
+                    
+                    // Recarrega a página
+                    window.location.reload(true);
+                    
+                    console.log('PWA atualizado com sucesso!');
+                } catch (error) {
+                    console.error('Erro ao atualizar PWA:', error);
+                }
+            }
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    const registration = await navigator.serviceWorker.register('./sw.js');
+                    console.log('ServiceWorker registrado com sucesso:', registration.scope);
+                    
+                    // Verifica se há uma nova versão do service worker
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                // Mostra notificação de atualização
+                                if (confirm('Nova versão disponível! Deseja atualizar agora?')) {
+                                    forceUpdate();
+                                }
+                            }
+                        });
+                    });
+                    
+                    // Registra para sincronização em background
+                    if ('sync' in registration) {
+                        registration.sync.register('sync-relatorios');
+                    }
+                    
+                    // Registra para notificações push
+                    if ('Notification' in window) {
+                        const permission = await Notification.requestPermission();
+                        if (permission === 'granted') {
+                            console.log('Notificações permitidas');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Erro ao registrar ServiceWorker:', error);
+                }
+            });
+        }
+    </script>
+    <style>
+        /* Estilos base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a2a6c 0%, #2a3d7c 50%, #253494 100%);
+            color: #ffffff;
+            line-height: 1.6;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Efeito de padrão sutil no fundo */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at 25px 25px, rgba(255, 255, 255, 0.05) 2%, transparent 0%),
+                radial-gradient(circle at 75px 75px, rgba(255, 255, 255, 0.05) 2%, transparent 0%);
+            background-size: 100px 100px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Container principal com efeito de vidro */
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            margin: 20px auto;
+            max-width: 1200px;
+            position: relative;
+            z-index: 1;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Efeito de brilho nos cantos */
+        .container::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, 
+                rgba(255,255,255,0.1) 0%,
+                rgba(255,255,255,0) 50%,
+                rgba(255,255,255,0.1) 100%);
+            border-radius: 20px;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Ajuste para elementos dentro do container */
+        .content {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Menu Lateral */
+        .sidebar {
+            width: 250px;
+            background-color: #2d2d2d;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            padding: 20px 0;
+            border-right: 1px solid #3d3d3d;
+        }
+        
+        .nav-menu-header {
+            padding: 15px 20px;
+            color: #00ff9d;
+            font-weight: bold;
+            font-size: 1.1em;
+            border-bottom: 1px solid #3d3d3d;
+            margin-bottom: 10px;
+            background-color: #252525;
+        }
+        
+        .sidebar-header {
+            padding: 0 20px 20px 20px;
+            border-bottom: 1px solid #3d3d3d;
+        }
+        
+        .sidebar-header h1 {
+            font-size: 1.2em;
+            margin: 0;
+            color: #00ff9d;
+        }
+        
+        .nav-menu {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+        
+        .nav-item {
+            padding: 10px 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: background-color 0.3s;
+        }
+        
+        .nav-item:hover {
+            background-color: #3d3d3d;
+        }
+        
+        .nav-item.active {
+            background-color: #00ff9d22;
+            border-left: 4px solid #00ff9d;
+        }
+        
+        .nav-item span.step-letter {
+            background-color: #00ff9d;
+            color: #1a1a1a;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        /* Conteúdo Principal */
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            flex: 1;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .step {
+            background-color: #2d2d2d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .step.active {
+            display: block;
+        }
+        
+        .critical {
+            border-left: 4px solid #ff4444;
+        }
+        
+        h2 {
+            color: #00ff9d;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+        }
+        
+        h2 span.letter {
+            background-color: #00ff9d;
+            color: #1a1a1a;
+            padding: 5px 15px;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        
+        .checkbox-group {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #363636;
+            border-radius: 4px;
+        }
+        
+        .checkbox-item {
+            margin: 10px 0;
+            display: flex;
+            align-items: flex-start;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            margin-top: 5px;
+            margin-right: 10px;
+        }
+        
+        textarea {
+            width: 100%;
+            background-color: #3d3d3d;
+            border: none;
+            border-radius: 4px;
+            color: #ffffff;
+            padding: 10px;
+            margin-top: 10px;
+            resize: vertical;
+        }
+        
+        .warning {
+            background-color: #ff444422;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border-left: 4px solid #ff4444;
+        }
+        
+        .vital-signs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .vital-sign {
+            flex: 1;
+            min-width: 200px;
+            background-color: #363636;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        
+        .vital-sign input {
+            width: 100%;
+            background-color: #2d2d2d;
+            border: 1px solid #4d4d4d;
+            color: #ffffff;
+            padding: 5px;
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+        
+        button {
+            background-color: #00ff9d;
+            color: #1a1a1a;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            margin-top: 20px;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background-color: #00cc7d;
+        }
+        
+        .protocol-section {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #363636;
+            border-radius: 4px;
+            border-left: 4px solid #00ff9d;
+        }
+
+        .protocol-section h3 {
+            color: #00ff9d;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .treatment-group {
+            margin-top: 10px;
+        }
+
+        .treatment-item {
+            margin-bottom: 10px;
+            background-color: #2d2d2d;
+            border-radius: 4px;
+        }
+
+        .treatment-header {
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+
+        .treatment-header label {
+            flex-grow: 1;
+            margin-left: 10px;
+        }
+
+        .toggle-btn {
+            background-color: #00ff9d33;
+            color: #00ff9d;
+            border: 1px solid #00ff9d;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            padding: 0;
+            margin-left: 10px;
+        }
+
+        .treatment-content {
+            display: none;
+            padding: 15px;
+            border-top: 1px solid #3d3d3d;
+            background-color: #363636;
+        }
+
+        .treatment-content.active {
+            display: block;
+        }
+
+        .treatment-content ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .treatment-content ul {
+            padding-left: 20px;
+            margin: 5px 0;
+        }
+
+        .treatment-content li {
+            margin: 5px 0;
+            color: #ddd;
+        }
+
+        .real-time-alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            max-width: 300px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            color: white;
+        }
+
+        .real-time-alert.show {
+            opacity: 1;
+        }
+
+        .real-time-alert.urgent {
+            background-color: rgb(220, 20, 20);
+            border: 2px solid rgb(180, 0, 0);
+        }
+
+        .real-time-alert.warning {
+            background-color: rgb(255, 165, 0);
+            border: 2px solid rgb(200, 130, 0);
+        }
+
+        .real-time-alert.info {
+            background-color: rgb(0, 150, 200);
+            border: 2px solid rgb(0, 100, 150);
+        }
+
+        .real-time-alert h4 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .real-time-alert p {
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .glasgow-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .glasgow-item {
+            flex: 1;
+            min-width: 200px;
+            background-color: #363636;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        
+        .glasgow-total {
+            background-color: #363636;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        
+        .pupil-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .pupil-side {
+            flex: 1;
+            min-width: 200px;
+            background-color: #363636;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        
+        .pupil-status {
+            background-color: #363636;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        
+        .motor-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .motor-side {
+            flex: 1;
+            min-width: 200px;
+            background-color: #363636;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        
+        .cincinnati-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .cincinnati-item {
+            flex: 1;
+            min-width: 200px;
+            background-color: #363636;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        
+        .cincinnati-total {
+            background-color: #363636;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        .button-group button {
+            padding: 10px 20px;
+            border-radius: 5px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .clear-btn {
+            background-color: #ff4444;
+            color: white;
+        }
+
+        .clear-btn:hover {
+            background-color: #ff0000;
+            transform: scale(1.05);
+        }
+
+        .report-btn {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .report-btn:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+
+        .copy-btn {
+            background-color: #3498db;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 15px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background-color: #2980b9;
+            transform: scale(1.05);
+        }
+
+        .save-btn {
+            background-color: #9b59b6;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 15px;
+            margin-left: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .save-btn:hover {
+            background-color: #8e44ad;
+            transform: scale(1.05);
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            margin-top: 15px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: #2c3e50;
+            color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #34495e;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .close {
+            color: #ecf0f1;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #bdc3c7;
+        }
+
+        #relatorio {
+            white-space: pre-line;
+            line-height: 1.6;
+            color: #ecf0f1;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Estilos para cards e seções */
+        .step {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .step:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .step h2 {
+            color: #ffffff;
+            font-size: 24px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .step h2 .letter {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 28px;
+            color: #4fc3f7;
+        }
+
+        /* Botões com efeito de vidro */
+        button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            padding: 12px 24px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        /* Inputs e campos de texto */
+        input[type="text"],
+        input[type="number"],
+        textarea,
+        select {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            width: 100%;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        textarea:focus,
+        select:focus {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.3);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(79, 195, 247, 0.3);
+        }
+
+        /* Checkbox personalizado */
+        input[type="checkbox"] {
+            display: none;
+        }
+
+        input[type="checkbox"] + label {
+            display: inline-flex;
+            align-items: center;
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px 0;
+        }
+
+        input[type="checkbox"] + label:before {
+            content: '';
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        input[type="checkbox"]:checked + label {
+            background: rgba(79, 195, 247, 0.2);
+            border-color: rgba(79, 195, 247, 0.4);
+        }
+
+        input[type="checkbox"]:checked + label:before {
+            background: #4fc3f7;
+            box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.9);
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                padding: 15px;
+            }
+
+            .step {
+                padding: 15px;
+            }
+
+            button {
+                width: 100%;
+                margin: 5px 0;
+            }
+        }
+    </style>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registrado com sucesso');
+                    })
+                    .catch(error => {
+                        console.log('Erro ao registrar ServiceWorker:', error);
+                    });
+            });
+        }
+    </script>
+</head>
+<body>
+    <!-- Menu Lateral -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>Protocolo X-ABCDE</h1>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-menu-header">
+                <span>Avaliação Primária</span>
+            </li>
+            <li class="nav-item active" onclick="showStep('x')">
+                <span class="step-letter">X</span>
+                Hemorragias Exsanguinantes
+            </li>
+            <li class="nav-item" onclick="showStep('a')">
+                <span class="step-letter">A</span>
+                Via Aérea
+            </li>
+            <li class="nav-item" onclick="showStep('b')">
+                <span class="step-letter">B</span>
+                Ventilação
+            </li>
+            <li class="nav-item" onclick="showStep('c')">
+                <span class="step-letter">C</span>
+                Circulação
+            </li>
+            <li class="nav-item" onclick="showStep('d')">
+                <span class="step-letter">D</span>
+                Disfunção Neurológica
+            </li>
+            <li class="nav-item" onclick="showStep('e')">
+                <span class="step-letter">E</span>
+                Exposição
+            </li>
+        </ul>
+    </div>
+
+    <!-- Conteúdo Principal -->
+    <div class="main-content">
+        <div class="container content">
+            <!-- X - Hemorragias Exsanguinantes -->
+            <div id="step-x" class="step critical active">
+                <h2><span class="letter">X</span>Hemorragias Exsanguinantes</h2>
+                <div class="warning">
+                    Prioridade: Controle imediato de hemorragias graves!
+                </div>
+                
+                <div class="protocol-section">
+                    <h3>Identificação e Tratamento</h3>
+                    <div class="treatment-group">
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="x1">
+                                <label for="x1">Sangramento Arterial (jato pulsátil)</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('arterial')">+</button>
+                            </div>
+                            <div class="treatment-content" id="arterial-treatment">
+                                <ol>
+                                    <li>Pressão direta imediata com compressa estéril</li>
+                                    <li>Elevação do membro (se aplicável)</li>
+                                    <li>Aplicar curativo compressivo em camadas</li>
+                                    <li>Se ineficaz, considerar torniquete proximal à lesão</li>
+                                    <li>Marcar hora de aplicação do torniquete</li>
+                                    <li>Avaliar perfusão distal</li>
+                                </ol>
+                            </div>
+                        </div>
+
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="x2">
+                                <label for="x2">Sangramento Venoso Abundante</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('venous')">+</button>
+                            </div>
+                            <div class="treatment-content" id="venous-treatment">
+                                <ol>
+                                    <li>Pressão direta com compressa estéril</li>
+                                    <li>Elevação do membro acima do nível do coração</li>
+                                    <li>Curativo compressivo</li>
+                                    <li>Monitorar sinais de choque</li>
+                                    <li>Avaliar necessidade de reposição volêmica</li>
+                                </ol>
+                            </div>
+                        </div>
+
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="x3">
+                                <label for="x3">Amputação Traumática</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('amputation')">+</button>
+                            </div>
+                            <div class="treatment-content" id="amputation-treatment">
+                                <ol>
+                                    <li>Controle imediato da hemorragia:
+                                        <ul>
+                                            <li>Torniquete 5-7cm proximal ao ferimento</li>
+                                            <li>Pressão direta se torniquete contraindicado</li>
+                                        </ul>
+                                    </li>
+                                    <li>Cuidados com o membro amputado:
+                                        <ul>
+                                            <li>Limpar com SF 0,9%</li>
+                                            <li>Envolver em compressa estéril</li>
+                                            <li>Colocar em saco plástico</li>
+                                            <li>Manter em temperatura baixa (não em contato direto com gelo)</li>
+                                        </ul>
+                                    </li>
+                                    <li>Prevenir choque hipovolêmico</li>
+                                </ol>
+                            </div>
+                        </div>
+
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="x4">
+                                <label for="x4">Hemorragia em Junção de Membros</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('junction')">+</button>
+                            </div>
+                            <div class="treatment-content" id="junction-treatment">
+                                <ol>
+                                    <li>Pressão direta no ponto de sangramento</li>
+                                    <li>Curativo hemostático (se disponível)</li>
+                                    <li>Considerar dispositivos específicos para junção</li>
+                                    <li>Monitorar sinais vitais continuamente</li>
+                                    <li>Preparar para evacuação rápida</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="protocol-section">
+                    <h3>Controle de Hemorragia</h3>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="x4">
+                            <label for="x4">Pressão direta no local</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="x5">
+                            <label for="x5">Curativo compressivo</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="x6">
+                            <label for="x6">Torniquete (se extremidade)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="protocol-section">
+                    <h3>Registro de Torniquete</h3>
+                    <div class="vital-signs">
+                        <div class="vital-sign">
+                            <label>Hora da Aplicação:</label>
+                            <input type="time" id="tourniquet-time">
+                        </div>
+                        <div class="vital-sign">
+                            <label>Local:</label>
+                            <input type="text" placeholder="Ex: MSD proximal">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="protocol-section">
+                    <h3>Avaliação da Efetividade</h3>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="x7">
+                            <label for="x7">Sangramento controlado</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="x8">
+                            <label for="x8">Ausência de pulso distal (se torniquete)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <textarea placeholder="Observações adicionais sobre hemorragias e medidas de controle..."></textarea>
+            </div>
+            
+            <!-- B - Ventilação -->
+            <div id="step-b" class="step">
+                <h2><span class="letter">B</span>Ventilação</h2>
+
+                <div class="protocol-section">
+                    <h3>Parâmetros Ventilatórios</h3>
+                    <div class="vital-signs">
+                        <div class="vital-sign">
+                            <label>FR:</label>
+                            <input type="number" id="b-fr" placeholder="resp/min">
+                        </div>
+                        <div class="vital-sign">
+                            <label>SpO2:</label>
+                            <input type="number" id="b-spo2" placeholder="%">
+                            <select id="b-hipercapnia">
+                                <option value="">Risco Hipercapnia</option>
+                                <option value="sem">Sem Risco</option>
+                                <option value="com">Com Risco</option>
+                                <option value="vm">Ventilação Mecânica</option>
+                            </select>
+                        </div>
+                        <div class="vital-sign">
+                            <label>Amplitude:</label>
+                            <select id="b-amplitude">
+                                <option value="">Selecione</option>
+                                <option value="normal">Normal</option>
+                                <option value="superficial">Superficial</option>
+                                <option value="profunda">Profunda</option>
+                            </select>
+                        </div>
+                        <div class="vital-sign">
+                            <label>Ritmo:</label>
+                            <select id="b-ritmo">
+                                <option value="">Selecione</option>
+                                <option value="regular">Regular</option>
+                                <option value="irregular">Irregular</option>
+                            </select>
+                        </div>
+                        <div class="vital-sign">
+                            <label>Expansão Torácica:</label>
+                            <select id="b-expansao">
+                                <option value="">Selecione</option>
+                                <option value="eficaz">Eficaz</option>
+                                <option value="ineficaz">Ineficaz</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="treatment-group">
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="b1">
+                                <label for="b1">Posicionamento</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('positioning')">+</button>
+                            </div>
+                            <div class="treatment-content" id="positioning-treatment">
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="b1-1">
+                                        <label for="b1-1">Fowler</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="b1-2">
+                                        <label for="b1-2">Semi-Fowler</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="b1-3">
+                                        <label for="b1-3">Decúbito Lateral</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="b2">
+                                <label for="b2">Ruídos Respiratórios</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('breath-sounds')">+</button>
+                            </div>
+                            <div class="treatment-content" id="breath-sounds-treatment">
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="b2-1">
+                                        <label for="b2-1">Pieira</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="b2-2">
+                                        <label for="b2-2">Farfalheira</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="b2-3">
+                                        <label for="b2-3">Estridor</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="b3">
+                                <label for="b3">Integridade da Parede Torácica</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('chest-wall')">+</button>
+                            </div>
+                            <div class="treatment-content" id="chest-wall-treatment">
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="b3-1">
+                                        <label for="b3-1">Lesões</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="b3-2">
+                                        <label for="b3-2">Instabilidade</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="b3-3">
+                                        <label for="b3-3">Crepitação</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="b4">
+                                <label for="b4">Sinais de Esforço</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('effort')">+</button>
+                            </div>
+                            <div class="treatment-content" id="effort-treatment">
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="b4-1">
+                                        <label for="b4-1">Musculatura Acessória</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="b4-2">
+                                        <label for="b4-2">Tiragens</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="b4-3">
+                                        <label for="b4-3">Assimetria</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="b5">
+                                <label for="b5">Cianose</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('cyanosis')">+</button>
+                            </div>
+                            <div class="treatment-content" id="cyanosis-treatment">
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="b5-1">
+                                        <label for="b5-1">Central</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="b5-2">
+                                        <label for="b5-2">Periférica</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="b6">
+                                <label for="b6">Oxigenoterapia</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('oxygen')">+</button>
+                            </div>
+                            <div class="treatment-content" id="oxygen-treatment">
+                                <div class="vital-signs">
+                                    <div class="vital-sign">
+                                        <label>Dispositivo:</label>
+                                        <select id="b6-device">
+                                            <option value="">Selecione</option>
+                                            <option value="cateter">Cateter Nasal</option>
+                                            <option value="mascara">Máscara Simples</option>
+                                            <option value="reservatorio">Máscara com Reservatório</option>
+                                            <option value="venturi">Máscara de Venturi</option>
+                                        </select>
+                                    </div>
+                                    <div class="vital-sign">
+                                        <label>Fluxo O2:</label>
+                                        <input type="number" id="b6-flow" placeholder="L/min">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <textarea placeholder="Observações adicionais sobre ventilação..."></textarea>
+            </div>
+
+            <!-- A - Via Aérea -->
+            <div id="step-a" class="step">
+                <h2><span class="letter">A</span>Via Aérea</h2>
+                
+                <div class="protocol-section">
+                    <h3>Permeabilidade da Via Aérea</h3>
+                    <div class="treatment-group">
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="a1">
+                                <label for="a1">Obstruções da Via Aérea</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('airway-obstr')">+</button>
+                            </div>
+                            <div class="treatment-content" id="airway-obstr-treatment">
+                                <ul>
+                                    <li>Sangue</li>
+                                    <li>Corpos estranhos</li>
+                                    <li>Secreções</li>
+                                    <li>Vômito</li>
+                                    <li>Edema das estruturas</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="a2">
+                                <label for="a2">Ruídos Respiratórios</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('airway-sounds')">+</button>
+                            </div>
+                            <div class="treatment-content" id="airway-sounds-treatment">
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="a2-1">
+                                        <label for="a2-1">Gorgolejo (presença de líquidos)</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="a2-2">
+                                        <label for="a2-2">Estridor (obstrução alta)</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="a2-3">
+                                        <label for="a2-3">Pieira audível</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="a3">
+                                <label for="a3">Desvio da Traqueia</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('trachea')">+</button>
+                            </div>
+                            <div class="treatment-content" id="trachea-treatment">
+                                <ul>
+                                    <li>Verificar alinhamento na linha média</li>
+                                    <li>Observar direção do desvio</li>
+                                    <li>Suspeita de pneumotórax hipertensivo</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="a4">
+                                <label for="a4">Ingurgitamento das Jugulares</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('jugular')">+</button>
+                            </div>
+                            <div class="treatment-content" id="jugular-treatment">
+                                <ul>
+                                    <li>Distensão venosa jugular</li>
+                                    <li>Suspeita de tamponamento cardíaco</li>
+                                    <li>Avaliar em ângulo de 45°</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="a5">
+                                <label for="a5">Lesões Cervicais</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('wounds')">+</button>
+                            </div>
+                            <div class="treatment-content" id="wounds-treatment">
+                                <ul>
+                                    <li>Feridas penetrantes</li>
+                                    <li>Contusões</li>
+                                    <li>Hematomas expansivos</li>
+                                    <li>Tumefações</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="a6">
+                                <label for="a6">Enfisema Subcutâneo</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('emphysema')">+</button>
+                            </div>
+                            <div class="treatment-content" id="emphysema-treatment">
+                                <ul>
+                                    <li>Crepitação à palpação</li>
+                                    <li>Suspeita de lesão traqueal/pulmonar</li>
+                                    <li>Avaliar extensão</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <textarea placeholder="Observações adicionais sobre via aérea..."></textarea>
+            </div>
+
+            <!-- C - Circulação -->
+            <div id="step-c" class="step">
+                <h2><span class="letter">C</span>Circulação</h2>
+
+                <div class="protocol-section">
+                    <h3>Mecanismo de Trauma</h3>
+                    <div class="vital-signs">
+                        <div class="vital-sign required-field">
+                            <label>Suspeita de Trauma:</label>
+                            <select id="c-trauma" required>
+                                <option value="">Selecione</option>
+                                <option value="sim">Sim</option>
+                                <option value="nao">Não</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="protocol-section">
+                    <h3>Parâmetros Circulatórios</h3>
+                    <div class="vital-signs">
+                        <div class="vital-sign">
+                            <label>FC:</label>
+                            <input type="number" id="c-fc" placeholder="bpm">
+                        </div>
+                        <div class="vital-sign">
+                            <label>PA Sistólica:</label>
+                            <input type="number" id="c-pa-sys" placeholder="mmHg">
+                        </div>
+                        <div class="vital-sign">
+                            <label>PA Diastólica:</label>
+                            <input type="number" id="c-pa-dia" placeholder="mmHg">
+                        </div>
+                        <div class="vital-sign">
+                            <label>Amplitude:</label>
+                            <select id="c-amplitude">
+                                <option value="">Selecione</option>
+                                <option value="normal">Normal</option>
+                                <option value="fraco">Fraco</option>
+                                <option value="filiforme">Filiforme</option>
+                            </select>
+                        </div>
+                        <div class="vital-sign">
+                            <label>Ritmo:</label>
+                            <select id="c-ritmo">
+                                <option value="">Selecione</option>
+                                <option value="regular">Regular</option>
+                                <option value="irregular">Irregular</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="treatment-group">
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="c1">
+                                <label for="c1">Pulso</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('pulse')">+</button>
+                            </div>
+                            <div class="treatment-content" id="pulse-treatment">
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="c1-1">
+                                        <label for="c1-1">Pulso Radial Bilateral</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="c1-2">
+                                        <label for="c1-2">Pulso Central (Carotídeo/Femoral)</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="c1-3">
+                                        <label for="c1-3">Assimetria</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="c2">
+                                <label for="c2">Pele</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('skin')">+</button>
+                            </div>
+                            <div class="treatment-content" id="skin-treatment">
+                                <div class="vital-signs">
+                                    <div class="vital-sign">
+                                        <label>Temperatura:</label>
+                                        <select id="c2-temp">
+                                            <option value="">Selecione</option>
+                                            <option value="normal">Normal</option>
+                                            <option value="quente">Quente</option>
+                                            <option value="fria">Fria</option>
+                                        </select>
+                                    </div>
+                                    <div class="vital-sign">
+                                        <label>Humidade:</label>
+                                        <select id="c2-humid">
+                                            <option value="">Selecione</option>
+                                            <option value="normal">Normal</option>
+                                            <option value="humida">Húmida</option>
+                                            <option value="suada">Suada</option>
+                                        </select>
+                                    </div>
+                                    <div class="vital-sign">
+                                        <label>Coloração:</label>
+                                        <select id="c2-color">
+                                            <option value="">Selecione</option>
+                                            <option value="normal">Normal</option>
+                                            <option value="palida">Pálida</option>
+                                            <option value="cianotica">Cianótica</option>
+                                            <option value="marmoreada">Marmoreada</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="c3">
+                                <label for="c3">Preenchimento Capilar</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('capillary')">+</button>
+                            </div>
+                            <div class="treatment-content" id="capillary-treatment">
+                                <div class="vital-signs">
+                                    <div class="vital-sign">
+                                        <label>Tempo:</label>
+                                        <select id="c3-time">
+                                            <option value="">Selecione</option>
+                                            <option value="normal">< 2 segundos</option>
+                                            <option value="lento">≥ 2 segundos</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="c4">
+                                <label for="c4">Hemorragias Externas</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('ext-bleeding')">+</button>
+                            </div>
+                            <div class="treatment-content" id="ext-bleeding-treatment">
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="c4-1">
+                                        <label for="c4-1">Hemorragia Visível</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="c4-2">
+                                        <label for="c4-2">Compressão Direta</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="c4-3">
+                                        <label for="c4-3">Torniquete</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="treatment-item">
+                            <div class="treatment-header">
+                                <input type="checkbox" id="c5">
+                                <label for="c5">Hemorragias Internas</label>
+                                <button class="toggle-btn" onclick="toggleTreatment('int-bleeding')">+</button>
+                            </div>
+                            <div class="treatment-content" id="int-bleeding-treatment">
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="c5-1">
+                                        <label for="c5-1">Suspeita de Trauma</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="c5-2">
+                                        <label for="c5-2">Sinais de Choque</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="c5-3">
+                                        <label for="c5-3">Distensão/Rigidez Abdominal</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="c5-4">
+                                        <label for="c5-4">Fratura Pélvica</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="c5-5">
+                                        <label for="c5-5">Fratura de Fêmur</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <textarea placeholder="Observações adicionais sobre circulação..."></textarea>
+            </div>
+
+            <!-- D - Disfunção Neurológica -->
+            <div id="step-d" class="step">
+                <h2><span class="letter">D</span>Disfunção Neurológica</h2>
+
+                <!-- AVDS -->
+                <div class="protocol-section">
+                    <h3>Escala AVDS</h3>
+                    <div class="vital-signs">
+                        <div class="vital-sign">
+                            <select id="d-avds">
+                                <option value="">Selecione</option>
+                                <option value="A">A - Alerta</option>
+                                <option value="V">V - Resposta Verbal</option>
+                                <option value="D">D - Resposta à Dor</option>
+                                <option value="S">S - Sem Resposta</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Glasgow -->
+                <div class="protocol-section">
+                    <h3>Escala de Coma de Glasgow</h3>
+                    <div class="glasgow-group">
+                        <div class="glasgow-item">
+                            <label>Abertura Ocular:</label>
+                            <select id="d-glasgow-olhos">
+                                <option value="">Selecione</option>
+                                <option value="4">4 - Espontânea</option>
+                                <option value="3">3 - Comando Verbal</option>
+                                <option value="2">2 - Estímulo Doloroso</option>
+                                <option value="1">1 - Nenhuma</option>
+                            </select>
+                        </div>
+                        <div class="glasgow-item">
+                            <label>Resposta Verbal:</label>
+                            <select id="d-glasgow-verbal">
+                                <option value="">Selecione</option>
+                                <option value="5">5 - Orientado</option>
+                                <option value="4">4 - Confuso</option>
+                                <option value="3">3 - Palavras Inapropriadas</option>
+                                <option value="2">2 - Sons Incompreensíveis</option>
+                                <option value="1">1 - Nenhuma</option>
+                            </select>
+                        </div>
+                        <div class="glasgow-item">
+                            <label>Resposta Motora:</label>
+                            <select id="d-glasgow-motora">
+                                <option value="">Selecione</option>
+                                <option value="6">6 - Obedece Comandos</option>
+                                <option value="5">5 - Localiza Dor</option>
+                                <option value="4">4 - Retirada à Dor</option>
+                                <option value="3">3 - Flexão Anormal</option>
+                                <option value="2">2 - Extensão Anormal</option>
+                                <option value="1">1 - Nenhuma</option>
+                            </select>
+                        </div>
+                        <div class="glasgow-total">
+                            <label>Total Glasgow:</label>
+                            <span id="d-glasgow-total">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pupilas -->
+                <div class="protocol-section">
+                    <h3>Avaliação Pupilar</h3>
+                    <div class="pupil-group">
+                        <div class="pupil-side">
+                            <h4>Olho Direito</h4>
+                            <div class="vital-sign">
+                                <label>Tamanho:</label>
+                                <select id="d-pupila-dir-tamanho">
+                                    <option value="">Selecione</option>
+                                    <option value="midriase">Midríase (>5mm)</option>
+                                    <option value="normal">Normal (3-5mm)</option>
+                                    <option value="miose">Miose (<3mm)</option>
+                                </select>
+                            </div>
+                            <div class="vital-sign">
+                                <label>Fotorreação:</label>
+                                <select id="d-pupila-dir-foto">
+                                    <option value="">Selecione</option>
+                                    <option value="presente">Presente</option>
+                                    <option value="lenta">Lenta</option>
+                                    <option value="ausente">Ausente</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="pupil-side">
+                            <h4>Olho Esquerdo</h4>
+                            <div class="vital-sign">
+                                <label>Tamanho:</label>
+                                <select id="d-pupila-esq-tamanho">
+                                    <option value="">Selecione</option>
+                                    <option value="midriase">Midríase (>5mm)</option>
+                                    <option value="normal">Normal (3-5mm)</option>
+                                    <option value="miose">Miose (<3mm)</option>
+                                </select>
+                            </div>
+                            <div class="vital-sign">
+                                <label>Fotorreação:</label>
+                                <select id="d-pupila-esq-foto">
+                                    <option value="">Selecione</option>
+                                    <option value="presente">Presente</option>
+                                    <option value="lenta">Lenta</option>
+                                    <option value="ausente">Ausente</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="pupil-status">
+                            <h4>Status</h4>
+                            <div class="status-item">
+                                <label>Simetria:</label>
+                                <span id="d-pupila-simetria">-</span>
+                            </div>
+                            <div class="status-item">
+                                <label>Fotorreação:</label>
+                                <span id="d-pupila-foto-status">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Glicemia -->
+                <div class="protocol-section">
+                    <h3>Glicemia Capilar</h3>
+                    <div class="vital-signs">
+                        <div class="vital-sign">
+                            <input type="number" id="d-glicemia" placeholder="mg/dL">
+                        </div>
+                        <div class="vital-sign">
+                            <select id="d-glicemia-estado">
+                                <option value="">Selecione</option>
+                                <option value="jejum">Jejum</option>
+                                <option value="pos">2h após refeição</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="reference-values">
+                        <small>Valores de Referência:</small>
+                        <br>
+                        <small>Jejum: 70-100 mg/dL (normal) | 100-126 mg/dL (pré-diabetes) | >126 mg/dL (diabetes)</small>
+                        <br>
+                        <small>2h após refeição: 70-140 mg/dL (normal) | 140-200 mg/dL (pré-diabetes) | >200 mg/dL (diabetes)</small>
+                    </div>
+                </div>
+
+                <!-- Força Motora -->
+                <div class="protocol-section">
+                    <h3>Lateralização Motora</h3>
+                    <div class="motor-group">
+                        <div class="motor-side">
+                            <h4>Lado Direito</h4>
+                            <select id="d-motor-dir">
+                                <option value="">Selecione</option>
+                                <option value="normal">Normal</option>
+                                <option value="paresia">Paresia</option>
+                                <option value="plegia">Plegia</option>
+                            </select>
+                        </div>
+                        <div class="motor-side">
+                            <h4>Lado Esquerdo</h4>
+                            <select id="d-motor-esq">
+                                <option value="">Selecione</option>
+                                <option value="normal">Normal</option>
+                                <option value="paresia">Paresia</option>
+                                <option value="plegia">Plegia</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cincinnati -->
+                <div class="protocol-section">
+                    <h3>Escala de Cincinnati</h3>
+                    <div class="cincinnati-group">
+                        <div class="vital-sign">
+                            <label>Face:</label>
+                            <select id="d-cinc-face">
+                                <option value="">Selecione</option>
+                                <option value="normal">Normal</option>
+                                <option value="alterada">Assimetria</option>
+                            </select>
+                        </div>
+                        <div class="vital-sign">
+                            <label>Força nos Braços:</label>
+                            <select id="d-cinc-braco">
+                                <option value="">Selecione</option>
+                                <option value="normal">Normal</option>
+                                <option value="alterada">Queda/Fraqueza</option>
+                            </select>
+                        </div>
+                        <div class="vital-sign">
+                            <label>Fala:</label>
+                            <select id="d-cinc-fala">
+                                <option value="">Selecione</option>
+                                <option value="normal">Normal</option>
+                                <option value="alterada">Alterada</option>
+                            </select>
+                        </div>
+                        <div class="cincinnati-total">
+                            <label>Total Cincinnati:</label>
+                            <span id="d-cinc-total">0/3</span>
+                        </div>
+                    </div>
+                </div>
+
+                <textarea placeholder="Observações neurológicas adicionais..."></textarea>
+            </div>
+
+            <!-- E - Exposição -->
+            <div id="step-e" class="step">
+                <h2><span class="letter">E</span>Exposição</h2>
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="e1">
+                        <label for="e1">Exposição com controle de temperatura</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="e2">
+                        <label for="e2">Lesões identificadas e documentadas</label>
+                    </div>
+                </div>
+                <textarea placeholder="Observações da exposição..."></textarea>
+            </div>
+
+            <div class="button-group">
+                <button onclick="salvarAvaliacao()">Salvar Avaliação</button>
+                <button onclick="gerarRelatorio()" class="report-btn">Gerar Relatório</button>
+                <button onclick="limparCampos()" class="clear-btn">Limpar Campos</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showStep(step) {
+            // Esconde todos os steps
+            document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+            // Mostra o step selecionado
+            document.getElementById('step-' + step).classList.add('active');
+            
+            // Atualiza o menu
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.querySelector(`.nav-item[onclick="showStep('${step}')"]`).classList.add('active');
+        }
+
+        function toggleTreatment(id) {
+            const content = document.getElementById(id + '-treatment');
+            content.classList.toggle('active');
+            const btn = content.previousElementSibling.querySelector('.toggle-btn');
+            btn.textContent = content.classList.contains('active') ? '-' : '+';
+        }
+
+        function salvarAvaliacao() {
+            // Aqui você pode adicionar a lógica para salvar os dados
+            alert('Avaliação salva com sucesso!');
+        }
+
+        function limparCampos() {
+            if (confirm('Tem certeza que deseja limpar todos os campos?')) {
+                // Limpa todos os inputs
+                document.querySelectorAll('input').forEach(input => {
+                    if (input.type === 'checkbox') {
+                        input.checked = false;
+                    } else if (input.type === 'number' || input.type === 'text') {
+                        input.value = '';
+                    }
+                });
+
+                // Limpa todos os selects
+                document.querySelectorAll('select').forEach(select => {
+                    select.value = '';
+                });
+
+                // Limpa todas as textareas
+                document.querySelectorAll('textarea').forEach(textarea => {
+                    textarea.value = '';
+                });
+
+                // Limpa spans com totais
+                ['d-glasgow-total', 'd-cinc-total', 'd-pupila-simetria', 'd-pupila-foto-status'].forEach(id => {
+                    const span = document.getElementById(id);
+                    if (span) {
+                        span.textContent = '-';
+                    }
+                });
+
+                showAlert({
+                    title: 'Campos Limpos',
+                    message: 'Todos os campos foram limpos com sucesso.',
+                    type: 'info'
+                });
+            }
+        }
+
+        // Alertas em tempo real
+        const alerts = {
+            'x1': {
+                title: 'ALERTA: Sangramento Arterial',
+                message: 'Hemorragia arterial identificada! Prioridade máxima para controle imediato. Considere torniquete se em extremidade.',
+                type: 'urgent'
+            },
+            'x2': {
+                title: 'ALERTA: Sangramento Venoso',
+                message: 'Sangramento venoso abundante requer pressão direta e elevação. Monitore sinais de choque.',
+                type: 'warning'
+            },
+            'x3': {
+                title: 'ALERTA: Amputação',
+                message: 'Amputação traumática! Priorize controle da hemorragia e preserve o membro amputado adequadamente.',
+                type: 'urgent'
+            },
+            'x4': {
+                title: 'ALERTA: Hemorragia em Junção',
+                message: 'Área de difícil controle! Considere agentes hemostáticos e priorize evacuação rápida.',
+                type: 'urgent'
+            },
+            'x5': {
+                title: 'Curativo Compressivo',
+                message: 'Aplique pressão uniforme. Verifique periodicamente a perfusão distal.',
+                type: 'info'
+            },
+            'x6': {
+                title: 'ALERTA: Torniquete',
+                message: 'Registre o horário! Reavalie a cada 30 minutos. Não cubra o torniquete.',
+                type: 'warning'
+            },
+            'x7': {
+                title: 'Controle do Sangramento',
+                message: 'Continue monitorando. Mantenha reavaliação constante do local.',
+                type: 'info'
+            },
+            'x8': {
+                title: 'Pulso Distal',
+                message: 'Ausência de pulso confirma efetividade do torniquete. Continue monitoramento.',
+                type: 'warning'
+            },
+            'a1': {
+                title: 'ALERTA: Obstrução de Via Aérea',
+                message: 'Verificada obstrução! Necessária desobstrução imediata.',
+                type: 'urgent'
+            },
+            'a2-1': {
+                title: 'ALERTA: Gorgolejo',
+                message: 'Presença de líquidos na via aérea. Necessária aspiração.',
+                type: 'warning'
+            },
+            'a2-2': {
+                title: 'ALERTA CRÍTICO: Estridor',
+                message: 'Estridor detectado! Obstrução grave da via aérea superior. Intervenção imediata necessária!',
+                type: 'urgent'
+            },
+            'a2-3': {
+                title: 'ALERTA: Pieira',
+                message: 'Pieira audível detectada. Avaliar broncoespasmo.',
+                type: 'warning'
+            },
+            'a3': {
+                title: 'ALERTA: Desvio de Traqueia',
+                message: 'Desvio traqueal identificado! Suspeita de pneumotórax hipertensivo.',
+                type: 'urgent'
+            },
+            'a4': {
+                title: 'ALERTA: Ingurgitamento Jugular',
+                message: 'Distensão jugular presente. Considerar tamponamento cardíaco.',
+                type: 'warning'
+            },
+            'a5': {
+                title: 'Lesões Cervicais',
+                message: 'Presença de feridas/tumefações. Avaliar comprometimento de via aérea.',
+                type: 'warning'
+            },
+            'a6': {
+                title: 'ALERTA: Enfisema Subcutâneo',
+                message: 'Enfisema subcutâneo detectado. Suspeita de lesão traqueal/pulmonar.',
+                type: 'urgent'
+            },
+            'b-fr': {
+                title: 'ALERTA: Frequência Respiratória',
+                message: 'FR alterada! Avaliar padrão respiratório.',
+                type: 'warning'
+            },
+            'b-spo2': {
+                title: 'ALERTA: Saturação',
+                message: 'SpO2 baixa! Considerar suporte de O2.',
+                type: 'urgent'
+            },
+            'b2-1': {
+                title: 'ALERTA: Pieira',
+                message: 'Pieira detectada. Avaliar broncoespasmo.',
+                type: 'warning'
+            },
+            'b2-2': {
+                title: 'ALERTA: Farfalheira',
+                message: 'Farfalheira detectada. Avaliar secreções.',
+                type: 'warning'
+            },
+            'b2-3': {
+                title: 'ALERTA CRÍTICO: Estridor',
+                message: 'Estridor detectado! Obstrução grave da via aérea superior. Intervenção imediata!',
+                type: 'urgent'
+            },
+            'b3-2': {
+                title: 'ALERTA: Instabilidade Torácica',
+                message: 'Tórax instável detectado! Avaliar trauma.',
+                type: 'urgent'
+            },
+            'b4-1': {
+                title: 'ALERTA: Musculatura Acessória',
+                message: 'Uso de musculatura acessória. Avaliar insuficiência respiratória.',
+                type: 'warning'
+            },
+            'b5-1': {
+                title: 'ALERTA CRÍTICO: Cianose Central',
+                message: 'Cianose central! Intervenção imediata necessária.',
+                type: 'urgent'
+            },
+            'b-vent-needed': {
+                title: 'ALERTA CRÍTICO: Ventilação',
+                message: 'FR < 8! Com expansão torácica eficaz, INICIAR VENTILAÇÃO ASSISTIDA IMEDIATAMENTE!',
+                type: 'urgent'
+            },
+            'spo2-normal': {
+                title: 'SpO2 Normal',
+                message: 'SpO2 dentro dos valores alvo.',
+                type: 'info'
+            },
+            'spo2-baixa-sem-risco': {
+                title: 'ALERTA: SpO2 Baixa',
+                message: 'SpO2 < 92% sem risco de hipercapnia. ALVO: 92-96%. Aumentar suporte de O2.',
+                type: 'urgent'
+            },
+            'spo2-alta-sem-risco': {
+                title: 'ALERTA: SpO2 Elevada',
+                message: 'SpO2 > 96% sem risco de hipercapnia. ALVO: 92-96%. Reduzir suporte de O2.',
+                type: 'warning'
+            },
+            'spo2-baixa-com-risco': {
+                title: 'ALERTA: SpO2 Baixa em Paciente de Risco',
+                message: 'SpO2 < 88% com risco de hipercapnia. ALVO: 88-92%. Aumentar suporte de O2 com cautela.',
+                type: 'urgent'
+            },
+            'spo2-alta-com-risco': {
+                title: 'ALERTA: SpO2 Elevada em Paciente de Risco',
+                message: 'SpO2 > 92% com risco de hipercapnia. ALVO: 88-92%. Reduzir suporte de O2.',
+                type: 'warning'
+            },
+            'spo2-baixa-vm': {
+                title: 'ALERTA: SpO2 Baixa em VM',
+                message: 'SpO2 < 92% em ventilação mecânica. ALVO: 92-96%. Ajustar parâmetros ventilatórios.',
+                type: 'urgent'
+            },
+            'spo2-alta-vm': {
+                title: 'ALERTA: SpO2 Elevada em VM',
+                message: 'SpO2 > 96% em ventilação mecânica. ALVO: 92-96%. Ajustar parâmetros ventilatórios.',
+                type: 'warning'
+            },
+            'c-fc-alta': {
+                title: 'ALERTA: Taquicardia',
+                message: 'FC elevada! Avaliar causas de choque.',
+                type: 'warning'
+            },
+            'c-fc-baixa': {
+                title: 'ALERTA: Bradicardia',
+                message: 'FC baixa! Avaliar perfusão.',
+                type: 'warning'
+            },
+            'c-pulso-ausente': {
+                title: 'ALERTA CRÍTICO: Pulso',
+                message: 'Ausência de pulso central! Iniciar RCP.',
+                type: 'urgent'
+            },
+            'c-pele': {
+                title: 'ALERTA: Perfusão',
+                message: 'Alterações na pele sugerem má perfusão.',
+                type: 'warning'
+            },
+            'c-capilar': {
+                title: 'ALERTA: Preenchimento Capilar',
+                message: 'Preenchimento capilar lento (≥2s). Avaliar perfusão.',
+                type: 'warning'
+            },
+            'c-hemorragia': {
+                title: 'ALERTA CRÍTICO: Hemorragia',
+                message: 'Hemorragia não controlada! Intervenção imediata necessária.',
+                type: 'urgent'
+            },
+            'c-choque': {
+                title: 'ALERTA CRÍTICO: Choque',
+                message: 'Sinais de choque presentes! Suspeita de hemorragia interna.',
+                type: 'urgent'
+            },
+            'c-pa-alta': {
+                title: 'ALERTA: Hipertensão',
+                message: 'PA elevada (>140/90 mmHg).',
+                type: 'warning'
+            },
+            'c-pa-baixa': {
+                title: 'ALERTA CRÍTICO: Hipotensão',
+                message: 'PA baixa (<90/60 mmHg). Avaliar sinais de choque!',
+                type: 'urgent'
+            },
+            'c-pa-choque': {
+                title: 'ALERTA CRÍTICO: Choque',
+                message: 'PAS < 90 mmHg! Sinais de choque presentes.',
+                type: 'urgent'
+            },
+            'c-trauma-alert': {
+                title: 'ALERTA: Trauma',
+                message: 'Suspeita de trauma! Avaliar hemorragias ocultas, fraturas e lesões internas.',
+                type: 'urgent'
+            },
+            'c-trauma-required': {
+                title: 'CAMPO OBRIGATÓRIO',
+                message: 'Por favor, indique se há suspeita de trauma antes de prosseguir.',
+                type: 'warning'
+            },
+            'd-avds-alterado': {
+                title: 'ALERTA: Nível de Consciência',
+                message: 'Paciente não está alerta. Avaliar causas.',
+                type: 'warning'
+            },
+            'd-glasgow-grave': {
+                title: 'ALERTA CRÍTICO: Glasgow',
+                message: 'Glasgow ≤ 8. Considerar via aérea definitiva.',
+                type: 'urgent'
+            },
+            'd-glasgow-moderado': {
+                title: 'ALERTA: Glasgow',
+                message: 'Glasgow 9-13. Monitorizar de perto.',
+                type: 'warning'
+            },
+            'd-pupilas': {
+                title: 'ALERTA: Pupilas',
+                message: 'Alteração pupilar detectada. Avaliar causas.',
+                type: 'warning'
+            },
+            'd-glicemia-hipo': {
+                title: 'ALERTA CRÍTICO: Hipoglicemia',
+                message: 'Glicemia < 70 mg/dL. Corrigir imediatamente!',
+                type: 'urgent'
+            },
+            'd-glicemia-pre-diabetes-jejum': {
+                title: 'ALERTA: Pré-Diabetes',
+                message: 'Glicemia em jejum entre 100-126 mg/dL.',
+                type: 'warning'
+            },
+            'd-glicemia-diabetes-jejum': {
+                title: 'ALERTA: Diabetes',
+                message: 'Glicemia em jejum > 126 mg/dL.',
+                type: 'warning'
+            },
+            'd-glicemia-pre-diabetes-pos': {
+                title: 'ALERTA: Pré-Diabetes',
+                message: 'Glicemia pós-prandial entre 140-200 mg/dL.',
+                type: 'warning'
+            },
+            'd-glicemia-diabetes-pos': {
+                title: 'ALERTA: Diabetes',
+                message: 'Glicemia pós-prandial > 200 mg/dL.',
+                type: 'warning'
+            },
+            'd-glicemia-hiper': {
+                title: 'ALERTA: Hiperglicemia',
+                message: 'Glicemia > 180 mg/dL.',
+                type: 'warning'
+            },
+            'd-lateralizacao': {
+                title: 'ALERTA: Déficit Motor',
+                message: 'Lateralização motora detectada.',
+                type: 'warning'
+            },
+            'd-avc': {
+                title: 'ALERTA CRÍTICO: Suspeita de AVC',
+                message: 'Cincinnati positivo. Considerar protocolo AVC.',
+                type: 'urgent'
+            },
+            'd-avds-s': {
+                title: 'ALERTA CRÍTICO: Sem Resposta',
+                message: 'Paciente sem resposta! INICIAR VOS (Ver, Ouvir, Sentir).',
+                type: 'urgent'
+            },
+            'd-pupilas-assimetria': {
+                title: 'ALERTA CRÍTICO: Assimetria Pupilar',
+                message: 'Anisocoria detectada! Avaliar lesão neurológica.',
+                type: 'urgent'
+            },
+            'd-pupilas-midriase': {
+                title: 'ALERTA CRÍTICO: Midríase Bilateral',
+                message: 'Midríase bilateral detectada! Avaliar lesão neurológica grave.',
+                type: 'urgent'
+            },
+            'd-pupilas-miose': {
+                title: 'ALERTA: Miose Bilateral',
+                message: 'Miose bilateral detectada. Avaliar causas.',
+                type: 'warning'
+            },
+            'd-pupilas-foto': {
+                title: 'ALERTA CRÍTICO: Fotorreação Ausente',
+                message: 'Ausência de fotorreação! Avaliar lesão neurológica.',
+                type: 'urgent'
+            }
+        };
+
+        function showAlert(id) {
+            // Remove alerta anterior se existir
+            const existingAlert = document.querySelector('.real-time-alert');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+
+            const alert = alerts[id];
+            if (alert) {
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `real-time-alert ${alert.type}`;
+                alertDiv.innerHTML = `
+                    <h4>${alert.title}</h4>
+                    <p>${alert.message}</p>
+                `;
+                document.body.appendChild(alertDiv);
+                
+                // Força o reflow para garantir a animação
+                alertDiv.offsetHeight;
+                
+                // Mostra o alerta
+                setTimeout(() => {
+                    alertDiv.classList.add('show');
+                }, 10);
+
+                // Remove o alerta após 8 segundos
+                setTimeout(() => {
+                    alertDiv.classList.remove('show');
+                    setTimeout(() => {
+                        alertDiv.remove();
+                    }, 300);
+                }, 8000);
+            }
+        }
+
+        // Adiciona listeners para todos os checkboxes
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    if (checkbox.checked) {
+                        showAlert(checkbox.id);
+                    }
+                });
+            });
+        });
+
+        // Adiciona listener para SpO2
+        document.addEventListener('DOMContentLoaded', () => {
+            const spo2Input = document.getElementById('b-spo2');
+            const hipercapniaSelect = document.getElementById('b-hipercapnia');
+            
+            if (spo2Input && hipercapniaSelect) {
+                const checkSpo2 = () => {
+                    const spo2 = parseInt(spo2Input.value);
+                    const hipercapnia = hipercapniaSelect.value;
+                    
+                    if (!spo2) return; // Se não houver valor, não faz nada
+                    
+                    switch(hipercapnia) {
+                        case 'sem':
+                            if (spo2 < 92) {
+                                showAlert('spo2-baixa-sem-risco');
+                            } else if (spo2 > 96) {
+                                showAlert('spo2-alta-sem-risco');
+                            } else {
+                                showAlert('spo2-normal');
+                            }
+                            break;
+                        case 'com':
+                            if (spo2 < 88) {
+                                showAlert('spo2-baixa-com-risco');
+                            } else if (spo2 > 92) {
+                                showAlert('spo2-alta-com-risco');
+                            } else {
+                                showAlert('spo2-normal');
+                            }
+                            break;
+                        case 'vm':
+                            if (spo2 < 92) {
+                                showAlert('spo2-baixa-vm');
+                            } else if (spo2 > 96) {
+                                showAlert('spo2-alta-vm');
+                            } else {
+                                showAlert('spo2-normal');
+                            }
+                            break;
+                    }
+                };
+                
+                spo2Input.addEventListener('change', checkSpo2);
+                hipercapniaSelect.addEventListener('change', checkSpo2);
+            }
+        });
+
+        // Adiciona listener para FR e Expansão Torácica
+        document.addEventListener('DOMContentLoaded', () => {
+            const frInput = document.getElementById('b-fr');
+            const expansaoSelect = document.getElementById('b-expansao');
+            
+            if (frInput && expansaoSelect) {
+                const checkVentilacao = () => {
+                    const fr = parseInt(frInput.value);
+                    const expansao = expansaoSelect.value;
+                    
+                    if (fr < 8 && expansao === 'eficaz') {
+                        showAlert('b-vent-needed');
+                    }
+                };
+                
+                frInput.addEventListener('change', checkVentilacao);
+                expansaoSelect.addEventListener('change', checkVentilacao);
+            }
+        });
+
+        // Adiciona listeners para parâmetros circulatórios
+        document.addEventListener('DOMContentLoaded', () => {
+            const fcInput = document.getElementById('c-fc');
+            const pulsoCheck = document.getElementById('c1-2');
+            const peleSelects = ['c2-temp', 'c2-humid', 'c2-color'].map(id => document.getElementById(id));
+            const capilarSelect = document.getElementById('c3-time');
+            const paSysInput = document.getElementById('c-pa-sys');
+            const paDiaInput = document.getElementById('c-pa-dia');
+            const traumaSelect = document.getElementById('c-trauma');
+            
+            if (fcInput) {
+                fcInput.addEventListener('change', () => {
+                    const fc = parseInt(fcInput.value);
+                    if (fc > 100) showAlert('c-fc-alta');
+                    if (fc < 60) showAlert('c-fc-baixa');
+                });
+            }
+
+            if (pulsoCheck) {
+                pulsoCheck.addEventListener('change', () => {
+                    if (!pulsoCheck.checked) showAlert('c-pulso-ausente');
+                });
+            }
+
+            if (peleSelects.every(select => select)) {
+                peleSelects.forEach(select => {
+                    select.addEventListener('change', () => {
+                        const temAlteracao = peleSelects.some(s => 
+                            s.value && s.value !== 'normal'
+                        );
+                        if (temAlteracao) showAlert('c-pele');
+                    });
+                });
+            }
+
+            if (capilarSelect) {
+                capilarSelect.addEventListener('change', () => {
+                    if (capilarSelect.value === 'lento') showAlert('c-capilar');
+                });
+            }
+
+            // Monitora hemorragias
+            const hemorragiaExt = document.getElementById('c4-1');
+            const hemorragiaInt = document.getElementById('c5-2');
+
+            if (hemorragiaExt) {
+                hemorragiaExt.addEventListener('change', () => {
+                    if (hemorragiaExt.checked) showAlert('c-hemorragia');
+                });
+            }
+
+            if (hemorragiaInt) {
+                hemorragiaInt.addEventListener('change', () => {
+                    if (hemorragiaInt.checked) showAlert('c-choque');
+                });
+            }
+
+            if (paSysInput && paDiaInput) {
+                const checkPA = () => {
+                    const sys = parseInt(paSysInput.value);
+                    const dia = parseInt(paDiaInput.value);
+                    
+                    if (!sys || !dia) return;
+                    
+                    if (sys < 90) {
+                        showAlert('c-pa-choque');
+                    } else if (sys < 90 || dia < 60) {
+                        showAlert('c-pa-baixa');
+                    } else if (sys > 140 || dia > 90) {
+                        showAlert('c-pa-alta');
+                    }
+                };
+                
+                paSysInput.addEventListener('change', checkPA);
+                paDiaInput.addEventListener('change', checkPA);
+            }
+
+            if (traumaSelect) {
+                traumaSelect.addEventListener('change', () => {
+                    if (traumaSelect.value === 'sim') {
+                        showAlert('c-trauma-alert');
+                        // Expande automaticamente a seção de hemorragias internas
+                        const intBleedingContent = document.getElementById('int-bleeding-treatment');
+                        if (intBleedingContent) {
+                            intBleedingContent.style.display = 'block';
+                        }
+                    }
+                });
+
+                // Validação inicial
+                if (!traumaSelect.value) {
+                    showAlert('c-trauma-required');
+                }
+            }
+        });
+
+        // Adiciona listeners para avaliação neurológica
+        document.addEventListener('DOMContentLoaded', () => {
+            // AVDS
+            const avdsSelect = document.getElementById('d-avds');
+            if (avdsSelect) {
+                avdsSelect.addEventListener('change', () => {
+                    if (avdsSelect.value === 'S') {
+                        showAlert('d-avds-s');
+                    } else if (avdsSelect.value && avdsSelect.value !== 'A') {
+                        showAlert('d-avds-alterado');
+                    }
+                });
+            }
+
+            // Glasgow
+            const glasgowInputs = ['d-glasgow-olhos', 'd-glasgow-verbal', 'd-glasgow-motora']
+                .map(id => document.getElementById(id));
+            const glasgowTotal = document.getElementById('d-glasgow-total');
+
+            const calcularGlasgow = () => {
+                if (glasgowInputs.every(input => input.value)) {
+                    const total = glasgowInputs.reduce((sum, input) => 
+                        sum + parseInt(input.value), 0);
+                    glasgowTotal.textContent = total;
+
+                    if (total <= 8) {
+                        showAlert('d-glasgow-grave');
+                    } else if (total <= 13) {
+                        showAlert('d-glasgow-moderado');
+                    }
+                }
+            };
+
+            glasgowInputs.forEach(input => {
+                if (input) {
+                    input.addEventListener('change', calcularGlasgow);
+                }
+            });
+
+            // Pupilas
+            const pupilaInputs = {
+                direita: {
+                    tamanho: document.getElementById('d-pupila-dir-tamanho'),
+                    foto: document.getElementById('d-pupila-dir-foto')
+                },
+                esquerda: {
+                    tamanho: document.getElementById('d-pupila-esq-tamanho'),
+                    foto: document.getElementById('d-pupila-esq-foto')
+                }
+            };
+            
+            const simetriaSpan = document.getElementById('d-pupila-simetria');
+            const fotoStatusSpan = document.getElementById('d-pupila-foto-status');
+
+            const avaliarPupilas = () => {
+                const dir = pupilaInputs.direita;
+                const esq = pupilaInputs.esquerda;
+
+                // Avalia simetria
+                if (dir.tamanho.value && esq.tamanho.value) {
+                    if (dir.tamanho.value === esq.tamanho.value) {
+                        simetriaSpan.textContent = 'Isocóricas';
+                        
+                        // Alerta para midríase ou miose bilateral
+                        if (dir.tamanho.value === 'midriase') {
+                            showAlert('d-pupilas-midriase');
+                        } else if (dir.tamanho.value === 'miose') {
+                            showAlert('d-pupilas-miose');
+                        }
+                    } else {
+                        simetriaSpan.textContent = 'Anisocóricas';
+                        showAlert('d-pupilas-assimetria');
+                    }
+                }
+
+                // Avalia fotorreação
+                if (dir.foto.value && esq.foto.value) {
+                    if (dir.foto.value === 'ausente' || esq.foto.value === 'ausente') {
+                        fotoStatusSpan.textContent = 'Fotorreação Ausente';
+                        showAlert('d-pupilas-foto');
+                    } else if (dir.foto.value === 'lenta' || esq.foto.value === 'lenta') {
+                        fotoStatusSpan.textContent = 'Fotorreação Lenta';
+                    } else {
+                        fotoStatusSpan.textContent = 'Fotorreação Normal';
+                    }
+                }
+            };
+
+            // Adiciona listeners para todos os selects de pupila
+            Object.values(pupilaInputs).forEach(lado => {
+                Object.values(lado).forEach(input => {
+                    if (input) {
+                        input.addEventListener('change', avaliarPupilas);
+                    }
+                });
+            });
+        });
+
+        // Atualiza avaliação de glicemia
+        document.addEventListener('DOMContentLoaded', () => {
+            const glicemiaInput = document.getElementById('d-glicemia');
+            const glicemiaEstado = document.getElementById('d-glicemia-estado');
+            
+            const avaliarGlicemia = () => {
+                if (!glicemiaInput.value || !glicemiaEstado.value) return;
+                
+                const valor = parseInt(glicemiaInput.value);
+                
+                if (valor < 70) {
+                    showAlert('d-glicemia-hipo');
+                    return;
+                }
+                
+                if (glicemiaEstado.value === 'jejum') {
+                    if (valor > 126) {
+                        showAlert('d-glicemia-diabetes-jejum');
+                    } else if (valor > 100) {
+                        showAlert('d-glicemia-pre-diabetes-jejum');
+                    }
+                } else if (glicemiaEstado.value === 'pos') {
+                    if (valor > 200) {
+                        showAlert('d-glicemia-diabetes-pos');
+                    } else if (valor > 140) {
+                        showAlert('d-glicemia-pre-diabetes-pos');
+                    }
+                }
+            };
+            
+            if (glicemiaInput && glicemiaEstado) {
+                glicemiaInput.addEventListener('change', avaliarGlicemia);
+                glicemiaEstado.addEventListener('change', avaliarGlicemia);
+            }
+        });
+
+        function gerarRelatorio() {
+            let relatorio = "PROTOCOLO XABCDE - RELATÓRIO DE AVALIAÇÃO\n";
+            relatorio += "Data: " + new Date().toLocaleString() + "\n\n";
+
+            // X - Hemorragia Exsanguinante
+            relatorio += "X - HEMORRAGIA EXSANGUINANTE\n";
+            document.querySelectorAll('#step-x input[type="checkbox"]:checked').forEach(checkbox => {
+                relatorio += "- " + checkbox.parentElement.textContent.trim() + "\n";
+            });
+
+            // A - Via Aérea
+            relatorio += "\nA - VIA AÉREA\n";
+            document.querySelectorAll('#step-a input[type="checkbox"]:checked').forEach(checkbox => {
+                relatorio += "- " + checkbox.parentElement.textContent.trim() + "\n";
+            });
+
+            // B - Respiração
+            relatorio += "\nB - RESPIRAÇÃO\n";
+            const fr = document.getElementById('b-fr').value;
+            const spo2 = document.getElementById('b-spo2').value;
+            if (fr) relatorio += "- Frequência Respiratória: " + fr + " irpm\n";
+            if (spo2) relatorio += "- SpO2: " + spo2 + "%\n";
+            
+            const hipercapnia = document.getElementById('b-hipercapnia').value;
+            if (hipercapnia) {
+                relatorio += "- Risco de Hipercapnia: " + (hipercapnia === 'com' ? 'Sim' : 'Não') + "\n";
+            }
+
+            document.querySelectorAll('#step-b input[type="checkbox"]:checked').forEach(checkbox => {
+                relatorio += "- " + checkbox.parentElement.textContent.trim() + "\n";
+            });
+
+            // C - Circulação
+            relatorio += "\nC - CIRCULAÇÃO\n";
+            const fc = document.getElementById('c-fc').value;
+            const paSys = document.getElementById('c-pa-sys').value;
+            const paDia = document.getElementById('c-pa-dia').value;
+            if (fc) relatorio += "- Frequência Cardíaca: " + fc + " bpm\n";
+            if (paSys && paDia) relatorio += "- Pressão Arterial: " + paSys + "/" + paDia + " mmHg\n";
+
+            const trauma = document.getElementById('c-trauma').value;
+            if (trauma) relatorio += "- Suspeita de Trauma: " + (trauma === 'sim' ? 'Sim' : 'Não') + "\n";
+
+            // D - Disfunção Neurológica
+            relatorio += "\nD - DISFUNÇÃO NEUROLÓGICA\n";
+            const avds = document.getElementById('d-avds').value;
+            if (avds) relatorio += "- AVDS: " + avds + "\n";
+
+            // Glasgow
+            const glasgowOlhos = document.getElementById('d-glasgow-olhos').value;
+            const glasgowVerbal = document.getElementById('d-glasgow-verbal').value;
+            const glasgowMotora = document.getElementById('d-glasgow-motora').value;
+            const glasgowTotal = document.getElementById('d-glasgow-total').textContent;
+
+            if (glasgowTotal !== '-') {
+                relatorio += "- Escala de Glasgow:\n";
+                relatorio += "  • Abertura Ocular: " + glasgowOlhos + "\n";
+                relatorio += "  • Resposta Verbal: " + glasgowVerbal + "\n";
+                relatorio += "  • Resposta Motora: " + glasgowMotora + "\n";
+                relatorio += "  • Total: " + glasgowTotal + "\n";
+            }
+
+            // Pupilas
+            const pupilaDirTam = document.getElementById('d-pupila-dir-tamanho').value;
+            const pupilaEsqTam = document.getElementById('d-pupila-esq-tamanho').value;
+            const pupilaDirFoto = document.getElementById('d-pupila-dir-foto').value;
+            const pupilaEsqFoto = document.getElementById('d-pupila-esq-foto').value;
+
+            if (pupilaDirTam || pupilaEsqTam) {
+                relatorio += "- Avaliação Pupilar:\n";
+                if (pupilaDirTam) relatorio += "  • Pupila Direita: " + pupilaDirTam + "\n";
+                if (pupilaEsqTam) relatorio += "  • Pupila Esquerda: " + pupilaEsqTam + "\n";
+                if (pupilaDirFoto) relatorio += "  • Fotorreação Direita: " + pupilaDirFoto + "\n";
+                if (pupilaEsqFoto) relatorio += "  • Fotorreação Esquerda: " + pupilaEsqFoto + "\n";
+            }
+
+            // Glicemia
+            const glicemia = document.getElementById('d-glicemia').value;
+            const glicemiaEstado = document.getElementById('d-glicemia-estado').value;
+            if (glicemia) {
+                relatorio += "- Glicemia: " + glicemia + " mg/dL";
+                if (glicemiaEstado) relatorio += " (" + (glicemiaEstado === 'jejum' ? 'Jejum' : '2h após refeição') + ")";
+                relatorio += "\n";
+            }
+
+            // E - Exposição
+            relatorio += "\nE - EXPOSIÇÃO\n";
+            const obsExposicao = document.querySelector('#step-e textarea').value;
+            if (obsExposicao) relatorio += "Observações: " + obsExposicao + "\n";
+
+            // Criar modal para exibir o relatório
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <h2>Relatório de Avaliação</h2>
+                    <pre id="relatorio">${relatorio}</pre>
+                    <div class="button-container">
+                        <button onclick="copiarRelatorio()" class="copy-btn">Copiar Relatório</button>
+                        <button onclick="salvarRelatorio()" class="save-btn">Salvar em Arquivo</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+            modal.style.display = "block";
+
+            // Fechar modal
+            const span = modal.querySelector('.close');
+            span.onclick = function() {
+                modal.remove();
+            }
+
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.remove();
+                }
+            }
+        }
+
+        function copiarRelatorio() {
+            const relatorio = document.getElementById('relatorio').textContent;
+            navigator.clipboard.writeText(relatorio).then(() => {
+                const copyBtn = document.querySelector('.copy-btn');
+                copyBtn.textContent = 'Copiado!';
+                copyBtn.classList.add('success');
+                
+                // Mostra alerta de sucesso
+                showAlert({
+                    title: 'Relatório Copiado',
+                    message: 'O relatório foi copiado para a área de transferência.',
+                    type: 'info'
+                });
+
+                // Retorna o botão ao estado original após 2 segundos
+                setTimeout(() => {
+                    copyBtn.textContent = 'Copiar Relatório';
+                    copyBtn.classList.remove('success');
+                }, 2000);
+            }).catch(err => {
+                showAlert({
+                    title: 'Erro ao Copiar',
+                    message: 'Não foi possível copiar o relatório. Por favor, tente novamente.',
+                    type: 'warning'
+                });
+            });
+        }
+
+        function salvarRelatorio() {
+            const relatorio = document.getElementById('relatorio').textContent;
+            const dataHora = new Date().toISOString().replace(/[:.]/g, '-');
+            const nomeArquivo = `relatorio-xabcde-${dataHora}.txt`;
+            
+            // Criar um blob com o conteúdo do relatório
+            const blob = new Blob([relatorio], { type: 'text/plain' });
+            
+            // Criar um link temporário para download
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = nomeArquivo;
+            
+            // Adicionar o link ao documento temporariamente
+            document.body.appendChild(link);
+            
+            // Simular clique no link
+            link.click();
+            
+            // Remover o link
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+            
+            // Mostrar alerta de sucesso
+            showAlert({
+                title: 'Relatório Salvo',
+                message: `O relatório foi salvo como "${nomeArquivo}"`,
+                type: 'info'
+            });
+        }
+    </script>
+</body>
+</html>

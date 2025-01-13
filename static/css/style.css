@@ -1,0 +1,70 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+}
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+    padding: 48px 0 0;
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+}
+
+.sidebar .nav-link {
+    font-weight: 500;
+    color: #333;
+}
+
+.sidebar .nav-link.active {
+    color: #007bff;
+}
+
+.alert-card {
+    border-left: 4px solid;
+    margin-bottom: 1rem;
+}
+
+.alert-card.warning {
+    border-left-color: #ffc107;
+    background-color: #fff3cd;
+}
+
+.alert-card.danger {
+    border-left-color: #dc3545;
+    background-color: #f8d7da;
+}
+
+.checklist-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    background-color: #fff;
+    transition: background-color 0.2s;
+}
+
+.checklist-item:hover {
+    background-color: #f8f9fa;
+}
+
+.checklist-item input[type="checkbox"] {
+    margin-right: 1rem;
+}
+
+.notes-area {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+#pacienteInfo {
+    padding: 0.5rem 1rem;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}

@@ -1,0 +1,40 @@
+{
+  "avaliacoes": [],
+  "pacientes": [
+    {
+      "id": "1",
+      "nome": "Paciente Teste",
+      "id_documento": "12345678900",
+      "data_nascimento": "1990-01-01",
+      "historico_medico": "Sem histórico relevante",
+      "alergias": "Nenhuma conhecida",
+      "medicacoes": "Nenhuma"
+    }
+  ],
+  "alertas": [
+    {
+      "id": "1",
+      "tipo": "via_aerea",
+      "descricao": "Obstrução de Via Aérea",
+      "gravidade": "alta",
+      "solucoes": [
+        "Realizar manobra de desobstrução",
+        "Avaliar necessidade de via aérea definitiva",
+        "Monitorar saturação de oxigênio"
+      ],
+      "referencias": "Protocolo de Manejo de Via Aérea"
+    },
+    {
+      "id": "2",
+      "tipo": "respiracao",
+      "descricao": "Taquipneia",
+      "gravidade": "media",
+      "solucoes": [
+        "Avaliar causa base",
+        "Monitorar frequência respiratória",
+        "Considerar suporte ventilatório"
+      ],
+      "referencias": "Protocolo de Suporte Ventilatório"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+# Interface Gráfica
+flask==3.0.0
+python-dotenv==1.0.0
+PyQt6==6.6.1
+qt-material==2.14
+
+# Firebase e Banco de Dados
+firebase-admin==6.3.0
+requests==2.29.0
+google-cloud-firestore==2.19.0
+
+# Segurança e Autenticação
+python-jwt==4.1.0
+cryptography==41.0.7
+
+# Utilitários
+pillow==10.2.0
+pandas==2.1.4
+openpyxl==3.1.2
+
+# Desenvolvimento
+black==23.12.1
+flake8==7.0.0
+pytest==7.4.4
+
+# Empacotamento
+pyinstaller==6.3.0

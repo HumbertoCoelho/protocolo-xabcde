@@ -1,0 +1,30 @@
+{
+  "packageId": "com.protocoloxabcde.app",
+  "name": "Protocolo XABCDE",
+  "launcherName": "XABCDE",
+  "display": "standalone",
+  "themeColor": "#2c3e50",
+  "backgroundColor": "#1a1a1a",
+  "iconUrl": "./templates/icons/icon-512x512.png",
+  "maskableIconUrl": "./templates/icons/icon-512x512.png",
+  "startUrl": "./index.html",
+  "webManifestUrl": "./templates/manifest.json",
+  "fallbackType": "customtabs",
+  "enableNotifications": true,
+  "enableSiteSettingsShortcut": true,
+  "shortcutsList": [
+    {
+      "name": "Novo Protocolo",
+      "shortName": "Novo",
+      "url": "./index.html?action=new"
+    }
+  ],
+  "generatorApp": {
+    "name": "Protocolo XABCDE",
+    "description": "Protocolo de Avaliação Primária em Emergências"
+  },
+  "signing": {
+    "file": "protocolo-xabcde.keystore",
+    "alias": "protocolo-xabcde"
+  }
+}

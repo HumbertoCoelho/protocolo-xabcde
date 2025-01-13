@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#2c3e50</color>
+    <color name="colorPrimaryDark">#1a2530</color>
+    <color name="colorAccent">#3498db</color>
+    <color name="windowBackground">#1a1a1a</color>
+    <color name="navigationBarColor">#1a1a1a</color>
+    <color name="statusBarColor">#1a1a1a</color>
+    
+    <!-- Cores de alerta -->
+    <color name="alertUrgent">#e74c3c</color>
+    <color name="alertWarning">#f39c12</color>
+    <color name="alertInfo">#3498db</color>
+    <color name="alertSuccess">#2ecc71</color>
+</resources>
