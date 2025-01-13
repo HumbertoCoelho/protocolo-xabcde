@@ -1,0 +1,223 @@
+:root {
+    --primary-color: #00ff9d;
+    --secondary-color: #1a1a1a;
+    --accent-color: #00ff9d;
+    --text-light: #ffffff;
+    --text-dark: #1a1a1a;
+    --spacing: 1rem;
+    --border-radius: 8px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    line-height: 1.6;
+    background-color: var(--secondary-color);
+    color: var(--text-light);
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+header {
+    background: var(--secondary-color);
+    padding: 1rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+header h1 {
+    color: var(--primary-color);
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+}
+
+.protocol-menu {
+    background: var(--secondary-color);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.menu-title {
+    color: var(--primary-color);
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    padding-left: 0.5rem;
+}
+
+.protocol-item {
+    display: flex;
+    align-items: center;
+    padding: 0.8rem;
+    margin-bottom: 0.5rem;
+    border-radius: var(--border-radius);
+    background: rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.protocol-item:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.protocol-letter {
+    width: 40px;
+    height: 40px;
+    background: var(--primary-color);
+    color: var(--text-dark);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    margin-right: 1rem;
+    font-size: 1.2rem;
+}
+
+.protocol-text {
+    flex: 1;
+    font-size: 1rem;
+}
+
+.content-panel {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin-top: 1rem;
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.panel-letter {
+    width: 50px;
+    height: 50px;
+    background: var(--primary-color);
+    color: var(--text-dark);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.5rem;
+    margin-right: 1rem;
+}
+
+.panel-title {
+    color: var(--text-light);
+    font-size: 1.4rem;
+}
+
+.priority-alert {
+    background: rgba(255, 59, 59, 0.2);
+    border-left: 4px solid #ff3b3b;
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: var(--border-radius);
+}
+
+.treatment-section {
+    margin-top: 2rem;
+}
+
+.treatment-section h3 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.treatment-item {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 1rem;
+    margin-bottom: 0.8rem;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.treatment-item:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Responsividade para smartphones */
+@media (max-width: 768px) {
+    .container {
+        padding: 0.5rem;
+    }
+
+    header h1 {
+        font-size: 1.5rem;
+    }
+
+    .protocol-item {
+        padding: 0.6rem;
+    }
+
+    .protocol-letter {
+        width: 35px;
+        height: 35px;
+        font-size: 1rem;
+    }
+
+    .protocol-text {
+        font-size: 0.9rem;
+    }
+
+    .panel-letter {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+    }
+
+    .panel-title {
+        font-size: 1.2rem;
+    }
+
+    .treatment-item {
+        padding: 0.8rem;
+        font-size: 0.9rem;
+    }
+}
+
+/* Animações */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.protocol-item, .treatment-item {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --secondary-color: #1a1a1a;
+        --text-light: #ffffff;
+    }
+}
+
+/* Melhorias de acessibilidade */
+.protocol-item:focus, .treatment-item:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Suporte para gestos touch */
+@media (hover: none) {
+    .protocol-item:active, .treatment-item:active {
+        background: rgba(255, 255, 255, 0.3);
+    }
+}
